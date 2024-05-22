@@ -186,4 +186,18 @@ public class QuerydslBasicTest {
 
         assertThat(teamA.get(team.name)).isEqualTo("teamA");
     }
+
+
+    /**
+     * 팀 A에 소속된 모든 회원
+     */
+    @Test
+    public void join() throws Exception {
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .join(member.team, team)
+                .where(team.name.eq("teamA"))
+                .fetch();
+        
+    }
 }
