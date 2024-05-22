@@ -189,7 +189,7 @@ public class QuerydslBasicTest {
 
 
     /**
-     * 팀 A에 소속된 모든 회원
+     * "teamA"에 소속된 모든 회원
      */
     @Test
     public void join() throws Exception {
@@ -198,6 +198,81 @@ public class QuerydslBasicTest {
                 .join(member.team, team)
                 .where(team.name.eq("teamA"))
                 .fetch();
-        
+    }
+
+    /**
+     * 회원의 이름이 팀 이름과 같은 회원 조회
+     */
+    @Test
+    public void theta_join() throws Exception {
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+        em.persist(new Member("teamC"));
+
+        List<Member> result = queryFactory
+                .select(member)
+                .from(member, team) // 일단 다 조인하고
+                .where(member.username.eq(team.name)) // where에서 필터링
+                .fetch();
+
+        /*
+        from
+            member m1_0,
+            team t1_0
+        where
+            m1_0.username=t1_0.name
+        * */
+
+        assertThat(result)
+                .extracting("username")
+                .containsExactly("teamA", "teamB");
+    }
+
+    /**
+     * 회원과 팀을 조인하면서, 팀 이름이 teamA인 팀만 조인, 회원은 모두 조회
+     * JPQL: select m, t from Member m left join m.team t on t.name = 'teamA'
+     * @throws Exception
+     */
+    @Test
+    public void join_on_filtering() throws Exception {
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                .leftJoin(member.team, team)
+                .on(team.name.eq("teamA"))
+                .fetch();
+
+        /*
+        from
+            member m1_0
+        left join
+            team t1_0
+                on t1_0.id=m1_0.team_id
+                and t1_0.name=?
+        * */
+
+        for (Tuple tuple : result) {
+            Member tupleMember = tuple.get(member);
+            Team tupleTeam = tuple.get(team); // team이 없으면 null로 나온다...
+            System.out.println(tupleMember);
+            System.out.println(tupleTeam);
+            System.out.println("===============================");
+        }
+    }
+
+    @Test
+    public void join_on_no_relation() throws Exception {
+        queryFactory
+                .select(member, team)
+                .from(member)
+                .leftJoin(team).on(member.username.eq(team.name))
+                .fetch();
+        /*
+        from
+            member m1_0
+        left join
+            team t1_0
+                on m1_0.username=t1_0.name
+        */
     }
 }
